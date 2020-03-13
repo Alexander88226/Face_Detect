@@ -32,8 +32,8 @@ CREATE_PERSON_TABLE_SQL = '''IF NOT EXISTS (SELECT * FROM sys.objects
 cursor.execute(CREATE_PERSON_TABLE_SQL)
 
 CREATE_PERSISTEDFACE_TABLE_SQL = '''IF NOT EXISTS (SELECT * FROM sys.objects 
-    WHERE object_id = OBJECT_ID(N'[dbo].[persistedface_table]') AND type in (N'U'))
-    CREATE TABLE [dbo].[persistedface_table](
+    WHERE object_id = OBJECT_ID(N'[dbo].[persistedface_tbl]') AND type in (N'U'))
+    CREATE TABLE [dbo].[persistedface_tbl](
 	[persistedFaceId] [varchar](50) NULL,
 	[fileName] [text] NULL,
 	[personId] [varchar](50) NULL
@@ -71,10 +71,9 @@ def create_PersonGroup(path):
 
         json = {'name' : group_name, 'userData':"this group is " + group_name + " Group", 'recognitionModel':'recognition_02'}
         #Request URL 
-        print(json['name'])
-        print(json['userData'])
         path_to_face_api_group = '/face/v1.0/persongroups/'+personGroupId
-        print(path_to_face_api_group)
+        if personGroupId == "visitor":
+            path_to_face_api_group = '/face/v1.0/largepersongroups/'+personGroupId
 
         try:
             # REST Call 
@@ -89,7 +88,6 @@ def create_PersonGroup(path):
             person_dirs = [name for name in os.listdir(group_path) if os.path.isdir(os.path.join(group_path, name))]
             for person_dir in person_dirs:
                 person_path = os.path.join(group_path, person_dir)
-                print(person_path)
                 create_Person(personGroupId, person_dir, person_path)
         except Exception as e:
             print(e)
@@ -100,6 +98,9 @@ def create_Person(personGroupId, person_dir, person_path):
     body["userData"] = "this person is " + person_dir
     #Request URL 
     path_to_face_api_person = '/face/v1.0/persongroups/'+personGroupId+'/persons'
+    if personGroupId == "visitor":
+        path_to_face_api_person = '/face/v1.0/largepersongroups/'+personGroupId+'/persons'
+
 
     try:
         # REST Call 
@@ -121,6 +122,9 @@ def add_person_face(personGroupId, personName, personId, person_path):
         'detectionModel': 'detection_02',
         }
     path_to_face_api_add_face = '/face/v1.0/persongroups/'+personGroupId+'/persons/'+personId+'/persistedFaces'
+    if personGroupId == "visitor":
+        path_to_face_api_add_face = '/face/v1.0/largepersongroups/'+personGroupId+'/persons/'+personId+'/persistedFaces'
+
     for file in os.listdir(person_path):
         ext = os.path.splitext(file)[1]
         if ext.lower() in valid_images:
@@ -134,16 +138,17 @@ def add_person_face(personGroupId, personName, personId, person_path):
                                         params=params)
                 parsed = response.json()
                 if response.status_code == 200:
-                    sql = "INSERT INTO persistedface_table (persistedFaceId, fileName, personId) VALUES (?,?,?)"
+                    sql = "INSERT INTO persistedface_tbl (persistedFaceId, fileName, personId) VALUES (?,?,?)"
                     cursor.execute(sql, parsed['persistedFaceId'], file, personId)
                     cursor.commit()
             except Exception as e:
                 print(e)
 def train_PersonGroup(personGroupId):
     path_to_face_api_train_group = '/face/v1.0/persongroups/' + personGroupId+'/train'
+    if personGroupId == 'visitor':
+        path_to_face_api_train_group = '/face/v1.0/largepersongroups/' + personGroupId+'/train'
     try:
         response = requests.post(uri_base + path_to_face_api_train_group, headers=simple_headers)
-        print(response.status_code)
         if response.status_code == 202:
             print("Trained group successuflly")
     except Exception as e:

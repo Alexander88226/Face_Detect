@@ -25,6 +25,7 @@ def face_detect(path):
     params = {
         'returnFaceId': 'true',
         'returnFaceLandmarks': 'false',
+        'recognitionModel':'recognition_02',
         'returnFaceAttributes': 'age,gender,headPose,smile,facialHair,glasses,emotion,hair,makeup,occlusion,accessories,blur,exposure,noise',
         }
 
